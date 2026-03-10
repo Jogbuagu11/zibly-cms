@@ -11,6 +11,7 @@ import {
   CreditCard,
   Bell,
   BarChart3,
+  Workflow,
   LogOut,
   BookOpen,
   Loader2,
@@ -24,6 +25,7 @@ const navLinks = [
   { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/pipeline', label: 'Pipeline', icon: Workflow },
 ]
 
 function getPageTitle(pathname: string): string {
