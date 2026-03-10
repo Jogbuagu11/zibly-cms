@@ -17,6 +17,7 @@ import {
   Video,
   Wifi,
   WifiOff,
+  RotateCcw,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -138,6 +139,7 @@ export default function PipelinePage() {
   const [error, setError] = useState('')
   const [serverStatus, setServerStatus] = useState<RenderServerStatus | null>(null)
   const [serverOnline, setServerOnline] = useState<boolean | null>(null)
+  const [restarting, setRestarting] = useState(false)
 
   // Action states
   const [ingesting, setIngesting] = useState(false)
@@ -274,6 +276,29 @@ export default function PipelinePage() {
     await Promise.all([fetchRuns(), fetchStories(), fetchServerStatus()])
   }
 
+  async function handleRestartServer() {
+    setRestarting(true)
+    setActionMessage('')
+    setActionError('')
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token ?? ''
+      const res = await fetch('/api/pipeline/restart-server', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed to restart server')
+      setServerOnline(null)
+      setActionMessage('Render server restarting... it will be back in a few seconds.')
+      // Check again after a delay
+      setTimeout(fetchServerStatus, 6000)
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Restart failed')
+    } finally {
+      setRestarting(false)
+    }
+  }
+
   const STATUS_TABS: { label: string; value: RawStoryStatus }[] = [
     { label: 'All', value: 'all' },
     { label: 'New', value: 'new' },
@@ -380,27 +405,37 @@ export default function PipelinePage() {
               <p className="text-xs text-gray-500">Hetzner CX22 &middot; 204.168.150.82</p>
             </div>
           </div>
-          {serverOnline && serverStatus && (
-            <div className="flex items-center gap-6 text-sm">
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">{serverStatus.queue_size}</p>
-                <p className="text-xs text-gray-500">Queue</p>
-              </div>
-              <div className="text-center">
-                <div className={`flex items-center gap-1.5 ${serverStatus.is_rendering ? 'text-blue-600' : 'text-gray-400'}`}>
-                  <Video className={`h-4 w-4 ${serverStatus.is_rendering ? 'animate-pulse' : ''}`} />
-                  <span className="text-sm font-medium">{serverStatus.is_rendering ? 'Rendering' : 'Idle'}</span>
+          <div className="flex items-center gap-6">
+            {serverOnline && serverStatus && (
+              <div className="flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-gray-900">{serverStatus.queue_size}</p>
+                  <p className="text-xs text-gray-500">Queue</p>
                 </div>
-                <p className="text-xs text-gray-500">Status</p>
+                <div className="text-center">
+                  <div className={`flex items-center gap-1.5 ${serverStatus.is_rendering ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <Video className={`h-4 w-4 ${serverStatus.is_rendering ? 'animate-pulse' : ''}`} />
+                    <span className="text-sm font-medium">{serverStatus.is_rendering ? 'Rendering' : 'Idle'}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">Status</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-gray-900">
+                    {Math.floor(serverStatus.uptime / 3600)}h {Math.floor((serverStatus.uptime % 3600) / 60)}m
+                  </p>
+                  <p className="text-xs text-gray-500">Uptime</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">
-                  {Math.floor(serverStatus.uptime / 3600)}h {Math.floor((serverStatus.uptime % 3600) / 60)}m
-                </p>
-                <p className="text-xs text-gray-500">Uptime</p>
-              </div>
-            </div>
-          )}
+            )}
+            <button
+              onClick={handleRestartServer}
+              disabled={restarting || serverOnline === false}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            >
+              <RotateCcw className={`h-3.5 w-3.5 ${restarting ? 'animate-spin' : ''}`} />
+              {restarting ? 'Restarting...' : 'Restart'}
+            </button>
+          </div>
         </div>
       </div>
 
