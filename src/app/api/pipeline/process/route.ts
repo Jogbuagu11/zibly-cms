@@ -1,7 +1,7 @@
 /**
  * POST /api/pipeline/process
- * Triggers orchestrate-pipeline for a single story_id.
- * Body: { story_id: string }
+ * Triggers orchestrate-pipeline for a single raw story.
+ * Body: { raw_story_id: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,16 +11,16 @@ export async function POST(req: NextRequest) {
   const auth = await requireEditorAuth(req)
   if (isAuthError(auth)) return auth
 
-  let body: { story_id?: string }
+  let body: { raw_story_id?: string }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { story_id } = body
-  if (!story_id) {
-    return NextResponse.json({ error: 'story_id is required' }, { status: 400 })
+  const { raw_story_id } = body
+  if (!raw_story_id) {
+    return NextResponse.json({ error: 'raw_story_id is required' }, { status: 400 })
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({
-          story_id,
+          raw_story_id,
           triggered_by: auth.userId,
         }),
       },
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: data.message ?? `Pipeline triggered for story ${story_id}.`,
+      message: data.message ?? `Pipeline triggered for story.`,
       ...data,
     })
   } catch (err) {

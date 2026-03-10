@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
             Authorization: `Bearer ${serviceKey}`,
           },
           body: JSON.stringify({
-            story_id: story.id,
+            raw_story_id: story.id,
             triggered_by: auth.userId,
           }),
         },

@@ -71,7 +71,7 @@ interface PipelineRun {
 
 interface RawStory {
   id: string
-  title: string
+  raw_title: string
   source_url: string | null
   source_name: string | null
   status: string
@@ -171,7 +171,7 @@ export default function PipelinePage() {
     try {
       let query = supabase
         .from('raw_stories')
-        .select('id, title, source_url, source_name, status, created_at')
+        .select('id, raw_title, source_url, source_name, status, created_at')
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -253,14 +253,14 @@ export default function PipelinePage() {
     }
   }
 
-  async function handleProcessSingle(storyId: string) {
-    setProcessingStoryId(storyId)
+  async function handleProcessSingle(rawStoryId: string) {
+    setProcessingStoryId(rawStoryId)
     setActionMessage('')
     setActionError('')
     try {
       const data = await apiFetch('/api/pipeline/process', {
         method: 'POST',
-        body: JSON.stringify({ story_id: storyId }),
+        body: JSON.stringify({ raw_story_id: rawStoryId }),
       })
       setActionMessage(data.message ?? 'Pipeline triggered for story.')
       await fetchRuns()
@@ -555,7 +555,7 @@ export default function PipelinePage() {
                   >
                     <div className="col-span-4">
                       <p className="truncate text-sm font-medium text-slate-900">
-                        {story.title}
+                        {story.raw_title}
                       </p>
                     </div>
                     <div className="col-span-2">
