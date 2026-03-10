@@ -44,43 +44,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Handle session changes — keep this sync, do profile fetch separately
+  const handleSession = useCallback((newSession: Session | null) => {
+    setSession(newSession)
+    setUser(newSession?.user ?? null)
+    if (newSession?.user) {
+      // Fire and forget — don't block the auth callback
+      fetchProfile(newSession.user.id)
+    } else {
+      setProfile(null)
+    }
+    setLoading(false)
+  }, [fetchProfile])
+
   useEffect(() => {
-    let mounted = true
+    // 1. Get the current session first
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      handleSession(currentSession)
+    }).catch(() => {
+      setLoading(false)
+    })
 
-    // Listen for auth changes FIRST so we don't miss events
+    // 2. Listen for future auth changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        if (!mounted) return
-        setSession(newSession)
-        setUser(newSession?.user ?? null)
-
-        if (newSession?.user) {
-          await fetchProfile(newSession.user.id)
-        } else {
-          setProfile(null)
-        }
-        setLoading(false)
+      (_event, newSession) => {
+        handleSession(newSession)
       }
     )
 
-    // Also check current session for initial load
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      if (!mounted) return
-      if (currentSession) {
-        setSession(currentSession)
-        setUser(currentSession.user)
-        await fetchProfile(currentSession.user.id)
-      }
-      setLoading(false)
-    }).catch(() => {
-      if (mounted) setLoading(false)
-    })
-
     return () => {
-      mounted = false
       subscription.unsubscribe()
     }
-  }, [fetchProfile])
+  }, [handleSession])
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
