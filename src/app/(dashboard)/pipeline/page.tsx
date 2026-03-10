@@ -87,7 +87,7 @@ interface RenderServerStatus {
   uptime: number
 }
 
-const RENDER_SERVER_URL = 'http://204.168.150.82:3100'
+// Server status is proxied through our own API to avoid mixed-content/CORS issues
 
 // ---------------------------------------------------------------------------
 // Skeleton Loaders
@@ -191,13 +191,14 @@ export default function PipelinePage() {
 
   const fetchServerStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${RENDER_SERVER_URL}/health`, { signal: AbortSignal.timeout(5000) })
-      if (res.ok) {
-        const data = await res.json()
+      const res = await fetch('/api/pipeline/server-status')
+      const data = await res.json()
+      if (data.online) {
         setServerStatus(data)
         setServerOnline(true)
       } else {
         setServerOnline(false)
+        setServerStatus(null)
       }
     } catch {
       setServerOnline(false)
@@ -429,7 +430,7 @@ export default function PipelinePage() {
             )}
             <button
               onClick={handleRestartServer}
-              disabled={restarting || serverOnline === false}
+              disabled={restarting}
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
             >
               <RotateCcw className={`h-3.5 w-3.5 ${restarting ? 'animate-spin' : ''}`} />
