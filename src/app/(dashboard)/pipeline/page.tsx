@@ -13,6 +13,10 @@ import {
   Inbox,
   ExternalLink,
   Filter,
+  Server,
+  Video,
+  Wifi,
+  WifiOff,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -75,6 +79,15 @@ interface RawStory {
 
 type RawStoryStatus = 'all' | 'new' | 'processing' | 'done' | 'skipped'
 
+interface RenderServerStatus {
+  status: string
+  queue_size: number
+  is_rendering: boolean
+  uptime: number
+}
+
+const RENDER_SERVER_URL = 'http://204.168.150.82:3100'
+
 // ---------------------------------------------------------------------------
 // Skeleton Loaders
 // ---------------------------------------------------------------------------
@@ -123,6 +136,8 @@ export default function PipelinePage() {
   const [loadingRuns, setLoadingRuns] = useState(true)
   const [loadingStories, setLoadingStories] = useState(true)
   const [error, setError] = useState('')
+  const [serverStatus, setServerStatus] = useState<RenderServerStatus | null>(null)
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null)
 
   // Action states
   const [ingesting, setIngesting] = useState(false)
@@ -172,6 +187,22 @@ export default function PipelinePage() {
     }
   }, [statusFilter])
 
+  const fetchServerStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${RENDER_SERVER_URL}/health`, { signal: AbortSignal.timeout(5000) })
+      if (res.ok) {
+        const data = await res.json()
+        setServerStatus(data)
+        setServerOnline(true)
+      } else {
+        setServerOnline(false)
+      }
+    } catch {
+      setServerOnline(false)
+      setServerStatus(null)
+    }
+  }, [])
+
   useEffect(() => {
     fetchRuns()
   }, [fetchRuns])
@@ -179,6 +210,12 @@ export default function PipelinePage() {
   useEffect(() => {
     fetchStories()
   }, [fetchStories])
+
+  useEffect(() => {
+    fetchServerStatus()
+    const interval = setInterval(fetchServerStatus, 15000)
+    return () => clearInterval(interval)
+  }, [fetchServerStatus])
 
   // Actions
   async function handleIngest() {
@@ -234,7 +271,7 @@ export default function PipelinePage() {
 
   async function handleRefresh() {
     setError('')
-    await Promise.all([fetchRuns(), fetchStories()])
+    await Promise.all([fetchRuns(), fetchStories(), fetchServerStatus()])
   }
 
   const STATUS_TABS: { label: string; value: RawStoryStatus }[] = [
@@ -310,6 +347,61 @@ export default function PipelinePage() {
           )}
           Process All New
         </button>
+      </div>
+
+      {/* Render Server Status */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+              serverOnline === null ? 'bg-gray-100' : serverOnline ? 'bg-green-50' : 'bg-red-50'
+            }`}>
+              <Server className={`h-5 w-5 ${
+                serverOnline === null ? 'text-gray-400' : serverOnline ? 'text-green-600' : 'text-red-500'
+              }`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900">Video Render Server</h3>
+                {serverOnline === null ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Checking
+                  </span>
+                ) : serverOnline ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    <Wifi className="h-3 w-3" /> Online
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <WifiOff className="h-3 w-3" /> Offline
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">Hetzner CX22 &middot; 204.168.150.82</p>
+            </div>
+          </div>
+          {serverOnline && serverStatus && (
+            <div className="flex items-center gap-6 text-sm">
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900">{serverStatus.queue_size}</p>
+                <p className="text-xs text-gray-500">Queue</p>
+              </div>
+              <div className="text-center">
+                <div className={`flex items-center gap-1.5 ${serverStatus.is_rendering ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <Video className={`h-4 w-4 ${serverStatus.is_rendering ? 'animate-pulse' : ''}`} />
+                  <span className="text-sm font-medium">{serverStatus.is_rendering ? 'Rendering' : 'Idle'}</span>
+                </div>
+                <p className="text-xs text-gray-500">Status</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900">
+                  {Math.floor(serverStatus.uptime / 3600)}h {Math.floor((serverStatus.uptime % 3600) / 60)}m
+                </p>
+                <p className="text-xs text-gray-500">Uptime</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Pipeline Runs Table */}
