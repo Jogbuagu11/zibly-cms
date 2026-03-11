@@ -267,18 +267,21 @@ export default function StoryReviewPage({
             </p>
           </div>
         </div>
-        <button
-          onClick={handleApproveAll}
-          disabled={approvingAll}
-          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 disabled:opacity-60"
-        >
-          {approvingAll ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCheck className="h-4 w-4" />
-          )}
-          Approve All
-        </button>
+        {story.story_versions.length > 0 &&
+          !story.story_versions.every((v) => v.status === 'approved') && (
+          <button
+            onClick={handleApproveAll}
+            disabled={approvingAll}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 disabled:opacity-60"
+          >
+            {approvingAll ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4" />
+            )}
+            Approve All
+          </button>
+        )}
       </div>
 
       {/* Source Attribution */}
